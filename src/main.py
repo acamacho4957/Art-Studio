@@ -33,7 +33,6 @@ import subprocess
 
 #Multithreading
 import queue
-import threading
 
 
 model = load_model('models/emotion_model.h5')
@@ -239,18 +238,36 @@ class CanvasPage(Frame):
         self.rgb = (red2, green2, blue2)
         self.config(bg=color)
     
+    # def adaptMusic(self, emotion):
+    #     if emotion in {'happy', 'neutral'}:
+    #         if self.emotion != emotion:
+    #             self.emotion = emotion
+    #             if mixer.music.get_busy():
+    #                 # queue.put(lambda: mixer.music.fadeout(1000))
+    #                 mixer.music.fadeout(1000)
+    #                 # mixer.music.pause()
+    #             if emotion == 'happy':
+    #                 # queue.put(lambda: mixer.music.load("lib/happy.mp3"))
+    #                 mixer.music.load("lib/happy.mp3")
+    #             else:
+    #                 mixer.music.load("lib/neutral.mp3")
+    #                 # queue.put(lambda: mixer.music.load("lib/neutral.mp3"))
+    #             # queue.put(lambda: mixer.music.play())
+    #             mixer.music.play()
+    #         else:
+    #             if not mixer.music.get_busy():
+    #                 if emotion == 'happy':
+    #                     mixer.music.load("lib/happy.mp3")
+    #                 else:
+    #                     mixer.music.load("lib/neutral.mp3")
+    #                 mixer.music.play()
+
     def adaptMusic(self, emotion):
         if emotion in {'happy', 'neutral'}:
             if self.emotion != emotion:
                 self.emotion = emotion
                 if mixer.music.get_busy():
-                    mixer.music.fadeout(1000)
-                    # mixer.music.pause()
-                if emotion == 'happy':
-                    mixer.music.load("lib/happy.mp3")
-                else:
-                    mixer.music.load("lib/neutral.mp3")
-                mixer.music.play()
+                    mixer.music.fadeout(500)
             else:
                 if not mixer.music.get_busy():
                     if emotion == 'happy':
@@ -383,7 +400,6 @@ def run():
     pygame.init()
     mixer.music.load("lib/neutral.mp3")
     mixer.music.play()
-    music_queue = queue.Queue()
 
     #Main loop
     while True:
