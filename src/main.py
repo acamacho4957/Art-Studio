@@ -20,7 +20,7 @@ from pyleap.leap import getLeapInfo, getLeapFrame
 
 #Music
 import pygame
-from pygame import mixer
+from pygame import mixer_music
 
 #Speech
 import time
@@ -242,39 +242,39 @@ class CanvasPage(Frame):
     #     if emotion in {'happy', 'neutral'}:
     #         if self.emotion != emotion:
     #             self.emotion = emotion
-    #             if mixer.music.get_busy():
-    #                 # queue.put(lambda: mixer.music.fadeout(1000))
-    #                 mixer.music.fadeout(1000)
-    #                 # mixer.music.pause()
+    #             if mixer_music.get_busy():
+    #                 # queue.put(lambda: mixer_music.fadeout(1000))
+    #                 mixer_music.fadeout(1000)
+    #                 # mixer_music.pause()
     #             if emotion == 'happy':
-    #                 # queue.put(lambda: mixer.music.load("lib/happy.mp3"))
-    #                 mixer.music.load("lib/happy.mp3")
+    #                 # queue.put(lambda: mixer_music.load("lib/happy.mp3"))
+    #                 mixer_music.load("lib/happy.mp3")
     #             else:
-    #                 mixer.music.load("lib/neutral.mp3")
-    #                 # queue.put(lambda: mixer.music.load("lib/neutral.mp3"))
-    #             # queue.put(lambda: mixer.music.play())
-    #             mixer.music.play()
+    #                 mixer_music.load("lib/neutral.mp3")
+    #                 # queue.put(lambda: mixer_music.load("lib/neutral.mp3"))
+    #             # queue.put(lambda: mixer_music.play())
+    #             mixer_music.play()
     #         else:
-    #             if not mixer.music.get_busy():
+    #             if not mixer_music.get_busy():
     #                 if emotion == 'happy':
-    #                     mixer.music.load("lib/happy.mp3")
+    #                     mixer_music.load("lib/happy.mp3")
     #                 else:
-    #                     mixer.music.load("lib/neutral.mp3")
-    #                 mixer.music.play()
+    #                     mixer_music.load("lib/neutral.mp3")
+    #                 mixer_music.play()
 
     def adaptMusic(self, emotion):
         if emotion in {'happy', 'neutral'}:
             if self.emotion != emotion:
                 self.emotion = emotion
-                if mixer.music.get_busy():
-                    mixer.music.fadeout(500)
+                if mixer_music.get_busy():
+                    mixer_music.fadeout(500)
             else:
-                if not mixer.music.get_busy():
+                if not mixer_music.get_busy():
                     if emotion == 'happy':
-                        mixer.music.load("lib/happy.mp3")
+                        mixer_music.load("lib/happy.mp3")
                     else:
-                        mixer.music.load("lib/neutral.mp3")
-                    mixer.music.play()
+                        mixer_music.load("lib/neutral.mp3")
+                    mixer_music.play()
 
     def save(self):
         if self.isActive:
@@ -398,8 +398,8 @@ def run():
 
     #Setup Audio
     pygame.init()
-    mixer.music.load("lib/neutral.mp3")
-    mixer.music.play()
+    mixer_music.load("lib/neutral.mp3")
+    mixer_music.play()
 
     #Main loop
     while True:
