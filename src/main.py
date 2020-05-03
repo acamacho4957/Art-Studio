@@ -213,11 +213,6 @@ class CanvasPage(Frame):
             self.color_bg = colorchooser.askcolor(color=self.color_bg)[1]
             self.c['bg'] = self.color_bg
 
-    # def adaptToEmotion(self, new_emotion):
-    #     if new_emotion in {'happy', 'neutral'}:
-    #         self.emotion = new_emotion
-    #     self.adaptRGB()
-
     def adaptRGB(self, emotionName):
         if emotionName == 'happy':
             r, g, b = emotionsToRGB[emotionName] #yellow
@@ -237,30 +232,6 @@ class CanvasPage(Frame):
         color = '#{:02x}{:02x}{:02x}'.format(red2, green2, blue2)
         self.rgb = (red2, green2, blue2)
         self.config(bg=color)
-    
-    # def adaptMusic(self, emotion):
-    #     if emotion in {'happy', 'neutral'}:
-    #         if self.emotion != emotion:
-    #             self.emotion = emotion
-    #             if mixer_music.get_busy():
-    #                 # queue.put(lambda: mixer_music.fadeout(1000))
-    #                 mixer_music.fadeout(1000)
-    #                 # mixer_music.pause()
-    #             if emotion == 'happy':
-    #                 # queue.put(lambda: mixer_music.load("lib/happy.mp3"))
-    #                 mixer_music.load("lib/happy.mp3")
-    #             else:
-    #                 mixer_music.load("lib/neutral.mp3")
-    #                 # queue.put(lambda: mixer_music.load("lib/neutral.mp3"))
-    #             # queue.put(lambda: mixer_music.play())
-    #             mixer_music.play()
-    #         else:
-    #             if not mixer_music.get_busy():
-    #                 if emotion == 'happy':
-    #                     mixer_music.load("lib/happy.mp3")
-    #                 else:
-    #                     mixer_music.load("lib/neutral.mp3")
-    #                 mixer_music.play()
 
     def adaptMusic(self, emotion):
         if emotion in {'happy', 'neutral'}:
@@ -313,30 +284,6 @@ def mm_to_px(screenWidth, screenHeight, position):
 
 def is_in_bounds(position):
     return position[0] >= -150 and position[0] <= 150 and position[1] >= 50 and position[1] <= 250
-
-# def listen_in_background(recognizer, source, callback, phrase_time_limit=None):
-#     assert isinstance(source, sr.AudioSource), "Source must be an audio source"
-#     running = [True]
-
-#     def threaded_listen():
-#         with source as s:
-#             while running[0]:
-#                 try:  # listen for 1 second, then check again if the stop function has been called
-#                     audio = recognizer.listen(s, 1, phrase_time_limit)
-#                 except sr.WaitTimeoutError:  # listening timed out, just try again
-#                     pass
-#                 else:
-#                     if running[0]: callback(recognizer, audio)
-
-#     def stopper(wait_for_stop=True):
-#         running[0] = False
-#         if wait_for_stop:
-#             listener_thread.join()  # block until the background thread is done, which can take around 1 second
-
-#     listener_thread = threading.Thread(target=threaded_listen)
-#     listener_thread.daemon = True
-#     listener_thread.start()
-#     return stopper
 
 def run():
     app = ArtStudioApp()
