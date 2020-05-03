@@ -269,7 +269,10 @@ class CanvasPage(Frame):
                 if mixer_music.get_busy():
                     mixer_music.fadeout(500)
             else:
+                if mixer_music.get_volume() <= .95:
+                    mixer_music.set_volume(mixer_music.get_volume() + 0.019)
                 if not mixer_music.get_busy():
+                    mixer_music.set_volume(0)
                     if emotion == 'happy':
                         mixer_music.load("lib/happy.mp3")
                     else:
