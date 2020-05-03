@@ -39,7 +39,7 @@ model = load_model('models/emotion_model.h5')
 # model = load_model('models/model_3.h5')
 
 emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
-emotionsToRGB = {'happy': (252, 0, 252), 'neutral':(0,240, 180)}
+emotionsToRGB = {'happy': (252, 252, 0), 'neutral': (40, 180, 252)}
 
 class ArtStudioApp(Tk):
     def __init__(self, *args, **kwargs):
@@ -220,9 +220,9 @@ class CanvasPage(Frame):
 
     def adaptRGB(self, emotionName):
         if emotionName == 'happy':
-            r, g, b = 252, 0, 252 #yellow
+            r, g, b = emotionsToRGB[emotionName] #yellow
         else:
-            r, g, b  = 0, 240, 180 #deep sky blue 2
+            r, g, b  = emotionsToRGB['neutral'] #deep sky blue 2
 
         dr, db, dg = 0, 0, 0
         if r != self.rgb[0]:
@@ -234,7 +234,7 @@ class CanvasPage(Frame):
 
         red1, green1, blue1, = self.rgb
         red2, green2, blue2 = red1 +  dr, green1 + dg, blue1 + db
-        color = '#{:02x}{:02x}{:02x}'.format(red2, blue2, green2)
+        color = '#{:02x}{:02x}{:02x}'.format(red2, green2, blue2)
         self.rgb = (red2, green2, blue2)
         self.config(bg=color)
     
