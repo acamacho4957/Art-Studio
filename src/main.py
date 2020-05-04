@@ -1,7 +1,7 @@
 #Painting
 from tkinter import *
 from tkinter import ttk, colorchooser, PhotoImage
-from PIL import Image
+from PIL import Image, ImageTk
 
 import sys, os
 sys.path.insert(0, os.path.abspath('..\pyleap'))
@@ -40,6 +40,14 @@ model = load_model('models/emotion_model.h5')
 
 emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 emotionsToRGB = {'happy': (252, 252, 0), 'neutral': (40, 180, 252)}
+
+BROWN_PALLETE = '#{:02x}{:02x}{:02x}'.format(232, 208, 132)
+RED = "red"
+ORANGE = "orange"
+YELLOW = "yellow"
+GREEN = "green"
+BLUE = "blue"
+PURPLE = "purple"
 
 class ArtStudioApp(Tk):
     def __init__(self, *args, **kwargs):
@@ -88,14 +96,19 @@ class ArtStudioApp(Tk):
     def initializeMenu(self):
         filemenu = Menu(self.menu)
         colormenu = Menu(self.menu)
-        self.menu.add_cascade(label='Colors',menu=colormenu)
-        colormenu.add_command(label='Brush Color',command=self.frames[CanvasPage].change_fg)
-        colormenu.add_command(label='Background Color',command=self.frames[CanvasPage].change_bg)
-        optionmenu = Menu(self.menu)
-        self.menu.add_cascade(label='Options',menu=optionmenu)
-        optionmenu.add_command(label='Clear Canvas',command=self.frames[CanvasPage].clear)
-        optionmenu.add_command(label='Save',command=self.frames[CanvasPage].save)
-        optionmenu.add_command(label='Exit',command=self.destroy)
+        self.menu.add_command(label="Home", command=lambda: self.show_frame(MainPage))
+        self.menu.add_command(label="Undo", command=self.frames[CanvasPage].undo)
+        self.menu.add_command(label="Clear Canvas", command=self.frames[CanvasPage].clear)
+        self.menu.add_command(label="Save", command=self.frames[CanvasPage].save)
+        self.menu.add_command(label="Exit", command=self.destroy)
+        # self.menu.add_cascade(label='Colors',menu=colormenu)
+        # colormenu.add_command(label='Brush Color',command=self.frames[CanvasPage].change_fg)
+        # colormenu.add_command(label='Background Color',command=self.frames[CanvasPage].change_bg)
+        # optionmenu = Menu(self.menu)
+        # self.menu.add_cascade(label='Options',menu=optionmenu)
+        # optionmenu.add_command(label='Clear Canvas',command=self.frames[CanvasPage].clear)
+        # optionmenu.add_command(label='Save',command=self.frames[CanvasPage].save)
+        # optionmenu.add_command(label='Exit',command=self.destroy)
 
     def hideMenu(self):
         self.config(menu="")
@@ -109,11 +122,28 @@ class MainPage(Frame):
         self.controller = controller
         self.isActive = True
         self.isContinue = False
-        label = Label(self, text="Welcome to Art Studio", font=("Verdana", 12))
+
+        self.config(bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+
+        label = Label(self,
+                      text="Welcome to Art Studio",
+                      font=("Comic Sans MS", 40),
+                      fg="white",
+                      bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+
         label.pack(pady=10, padx=10)
 
-        button1 = Button(self, text="New Drawing", command=lambda: controller.show_frame(CanvasPage, state="NEW"))
-        button1.pack()
+        photo = ImageTk.PhotoImage(file="lib/main_image3.png")
+        label_photo = Label(self, image=photo, bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+        label_photo.image = photo
+        label_photo.pack()
+
+        button1 = Button(self, 
+                         text="New Drawing", 
+                         font=("Comic Sans MS", 20),
+                         bg="white",
+                         command=lambda: controller.show_frame(CanvasPage, state="NEW"))
+        button1.pack(pady=10)
 
     def activate(self):
         self.isActive = True
@@ -124,18 +154,27 @@ class MainPage(Frame):
     
     def showContinue(self):
         if not self.isContinue:
-            button2 = Button(self, text="Continue Drawing", command=lambda: self.controller.show_frame(CanvasPage, state="CONTINUE"))
+
+            button2 = Button(self, 
+                             text="Continue Drawing", 
+                             font=("Comic Sans MS", 20),
+                             bg="white",
+                             command=lambda: self.controller.show_frame(CanvasPage, state="CONTINUE"))
             button2.pack()
+
             self.isContinue = True
 
 class CanvasPage(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
+        self.controller = controller
         self.isActive = False
         self.emotion = 'neutral'
         self.rgb = emotionsToRGB[self.emotion]
         self.color_fg = 'black'
         self.color_bg = 'white'
+        self.all_lines = []
+        self.recent_line = []
         self.old_x = None
         self.old_y = None
         self.cursor = None
@@ -144,7 +183,7 @@ class CanvasPage(Frame):
         self.penwidth = 20
         self.controls = None
         self.c = None #painting canvas
-        self.b = None #background canvas
+        self.p = None #color pallet
         self.drawWidgets()
         self.c.bind('<B1-Motion>', self.paint) #drawing the line 
         self.c.bind('<ButtonRelease-1>', self.reset)
@@ -156,15 +195,23 @@ class CanvasPage(Frame):
         self.isActive = False
 
     def paint(self, e):
-        if self.old_x and self.old_y:
-            self.c.create_line(self.old_x,self.old_y,e.x,e.y,width=self.penwidth,fill=self.color_fg,capstyle=ROUND,smooth=True)
-        self.old_x = e.x
-        self.old_y = e.y
+        if self.isActive:
+            if self.old_x and self.old_y:
+                line_id = self.c.create_line(self.old_x,self.old_y,e.x,e.y,width=self.penwidth,fill=self.color_fg,capstyle=ROUND,smooth=True)
+                self.recent_line.append(line_id)
+            else:
+                self.recent_line = []
+            self.old_x = e.x
+            self.old_y = e.y
+
 
     def gesture_paint(self, x, y):
         if self.isActive:
             if self.old_x and self.old_y:
-                self.c.create_line(self.old_x,self.old_y,x,y,width=self.penwidth,fill=self.color_fg,capstyle=ROUND,smooth=True)
+                line_id = self.c.create_line(self.old_x,self.old_y,x,y,width=self.penwidth,fill=self.color_fg,capstyle=ROUND,smooth=True)
+                self.recent_line.append(line_id)
+            else:
+                self.recent_line = []
             self.old_x = x
             self.old_y = y
 
@@ -190,7 +237,13 @@ class CanvasPage(Frame):
 
     def reset(self, e = None): #finishing a stroke
         self.old_x = None
-        self.old_y = None   
+        self.old_y = None 
+    
+    def undo(self):
+        if self.isActive:
+            for id in self.recent_line:
+                self.c.delete(id)
+            self.recent_line = []
 
     def changeW(self, e):
         if self.isActive:
@@ -248,7 +301,7 @@ class CanvasPage(Frame):
                         mixer_music.load("lib/happy.mp3")
                     else:
                         mixer_music.load("lib/neutral.mp3")
-                    mixer_music.play()
+                    # mixer_music.play()
 
     def save(self):
         if self.isActive:
@@ -266,10 +319,18 @@ class CanvasPage(Frame):
         # # self.slider.set(self.penwidth)
         # # self.slider.grid(row=0,column=1,ipadx=30)
         # self.controls.pack(side=LEFT)
-        
-        self.c = Canvas(self, width=1000, height=800, bg=self.color_bg, cursor="circle")
+        c_width = int(self.controller.winfo_screenwidth()*.7)
+        c_height = int(self.controller.winfo_screenheight()*.75)
+        self.c = Canvas(self, width=c_width, height=c_height, bg=self.color_bg, cursor="circle")
         self.create_cursor()
         self.c.place(relx=0.5, rely=0.5, anchor=CENTER)
+
+        p_width = int(self.controller.winfo_screenwidth()*.1)
+        p_height = int(self.controller.winfo_screenheight()*.75)
+        self.p = Canvas(self, bg=BROWN_PALLETE, width=p_width, height=p_height)
+        # red_square = Label(self.p, pady=5, bg=RED)
+        # red_square.grid(row=0, column=0, rowspan=2, columnspan=2)
+        self.p.pack(side=RIGHT)
 
 def label_image(model, img):
     x = np.expand_dims(image.img_to_array(img), axis = 0)/255
@@ -278,19 +339,20 @@ def label_image(model, img):
 
 def mm_to_px(screenWidth, screenHeight, position):
     x, y, z = position
-    x = screenWidth/300*(x+150)
-    y = screenHeight - screenHeight/200*(y-50)
+    x = screenWidth/250*(x+80)
+    y = screenHeight - screenHeight/140*(y-50)
     return x, y, z
 
 def is_in_bounds(position):
-    return position[0] >= -150 and position[0] <= 150 and position[1] >= 50 and position[1] <= 250
+    return position[0] >= -100 and position[0] <= 150 and position[1] >= 60 and position[1] <= 200
 
 def run():
     app = ArtStudioApp()
     canvasPage = app.frames[CanvasPage]
-    screen_width = 1200
-    screen_height = 1000
-
+    screen_width = app.winfo_screenwidth()
+    screen_height = app.winfo_screenheight()
+    # c_width = int(self.controller.winfo_screenwidth()*.7)
+    # c_height = int(self.controller.winfo_screenheight()*.75)
     #Setup Speech Multithreading
     speech_callback_queue = queue.Queue()
 
@@ -321,7 +383,7 @@ def run():
                 speech_callback_queue.put(canvasPage.save)
             elif "quit" in words or "exit" in words or "close" in words:
                 speech_callback_queue.put(canvasPage.master.destroy)
-            elif "help" in words:
+            elif "home" in words:
                 speech_callback_queue.put(lambda: app.show_frame(MainPage))
         except sr.UnknownValueError:
             print("Google Speech Recognition could not understand audio")
@@ -349,7 +411,7 @@ def run():
     #Setup Audio
     pygame.init()
     mixer_music.load("lib/neutral.mp3")
-    mixer_music.play()
+    # mixer_music.play()
 
     #Main loop
     while True:
@@ -387,6 +449,7 @@ def run():
             pointer_position_mm = list(hand.palm_pos)
             
             if pointer_position_mm != [0, 0, 0] and is_in_bounds(pointer_position_mm):
+                print(pointer_position_mm)
                 x, y, z = mm_to_px(screen_width,screen_height,pointer_position_mm)
                 store.append((x,y,z))
                 if len(store) >= 1:
@@ -396,7 +459,7 @@ def run():
 
                     canvasPage.move_cursor_to(avg_x, avg_y)
 
-                    if avg_z <= 0:
+                    if avg_z <= -50:
                         canvasPage.gesture_paint(avg_x, avg_y)
                         canvasPage.fill_cursor()
                     else:
