@@ -97,6 +97,7 @@ class ArtStudioApp(Tk):
         filemenu = Menu(self.menu)
         colormenu = Menu(self.menu)
         self.menu.add_command(label="Home", command=lambda: self.show_frame(MainPage))
+        self.menu.add_command(label="Change Custom Color", command=self.frames[CanvasPage].change_fg)
         self.menu.add_command(label="Undo", command=self.frames[CanvasPage].undo)
         self.menu.add_command(label="Clear Canvas", command=self.frames[CanvasPage].clear)
         self.menu.add_command(label="Save", command=self.frames[CanvasPage].save)
@@ -133,7 +134,7 @@ class MainPage(Frame):
 
         label.pack(pady=10, padx=10)
 
-        photo = ImageTk.PhotoImage(file="lib/main_image3.png")
+        photo = ImageTk.PhotoImage(file="lib/main_image.png")
         label_photo = Label(self, image=photo, bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
         label_photo.image = photo
         label_photo.pack()
@@ -171,6 +172,9 @@ class CanvasPage(Frame):
         self.isActive = False
         self.emotion = 'neutral'
         self.rgb = emotionsToRGB[self.emotion]
+        self.adaptRGB(self.emotion)
+        self.color_custom = 'gray'
+        self.custom_square = None
         self.color_fg = 'black'
         self.color_bg = 'white'
         self.all_lines = []
@@ -181,7 +185,7 @@ class CanvasPage(Frame):
         self.cursor_x = 50
         self.cursor_y = 50
         self.penwidth = 20
-        self.controls = None
+        self.selected = None
         self.c = None #painting canvas
         self.p = None #color pallet
         self.drawWidgets()
@@ -197,10 +201,8 @@ class CanvasPage(Frame):
     def paint(self, e):
         if self.isActive:
             if self.old_x and self.old_y:
-                line_id = self.c.create_line(self.old_x,self.old_y,e.x,e.y,width=self.penwidth,fill=self.color_fg,capstyle=ROUND,smooth=True)
+                line_id = self.c.create_line(self.old_x,self.old_y,e.x,e.y,width=int(self.penwidth),fill=self.color_fg,capstyle=ROUND,smooth=True)
                 self.recent_line.append(line_id)
-            else:
-                self.recent_line = []
             self.old_x = e.x
             self.old_y = e.y
 
@@ -208,15 +210,13 @@ class CanvasPage(Frame):
     def gesture_paint(self, x, y):
         if self.isActive:
             if self.old_x and self.old_y:
-                line_id = self.c.create_line(self.old_x,self.old_y,x,y,width=self.penwidth,fill=self.color_fg,capstyle=ROUND,smooth=True)
+                line_id = self.c.create_line(self.old_x,self.old_y,x,y,width=int(self.penwidth),fill=self.color_fg,capstyle=ROUND,smooth=True)
                 self.recent_line.append(line_id)
-            else:
-                self.recent_line = []
             self.old_x = x
             self.old_y = y
 
     def create_cursor(self):
-        dim = self.penwidth//2
+        dim = int(self.penwidth)//2
         self.cursor = self.c.create_oval(self.cursor_x-dim, self.cursor_y-dim, self.cursor_x + dim, self.cursor_y + dim, outline=self.color_fg, width=4)
     
     def move_cursor_to(self, x, y):
@@ -237,13 +237,16 @@ class CanvasPage(Frame):
 
     def reset(self, e = None): #finishing a stroke
         self.old_x = None
-        self.old_y = None 
+        self.old_y = None
+        if len(self.recent_line) > 0:
+            self.all_lines.append(self.recent_line)
+            self.recent_line = []
     
     def undo(self):
-        if self.isActive:
-            for id in self.recent_line:
+        if self.isActive and len(self.all_lines) > 0:
+            undo_line = self.all_lines.pop()
+            for id in undo_line:
                 self.c.delete(id)
-            self.recent_line = []
 
     def changeW(self, e):
         if self.isActive:
@@ -258,8 +261,11 @@ class CanvasPage(Frame):
         if self.isActive:
             if color is None:
                 self.color_fg = colorchooser.askcolor(color=self.color_fg)[1]
+                self.color_custom = self.color_fg
+                self.custom_square.config(bg=self.color_custom, activebackground=self.color_custom)
             else: 
                 self.color_fg = color
+                self.empty_cursor()
 
     def change_bg(self):  #changing the background color canvas
         if self.isActive:
@@ -311,6 +317,10 @@ class CanvasPage(Frame):
             img.save('drawing.jpg', 'jpeg')
             self.c.itemconfig(self.cursor, state='normal')
             Image.open('drawing.jpg').show()
+    
+    def entry_callback(self):
+        print(self.sv.get())
+        return True
 
     def drawWidgets(self):
         # self.controls = Frame(self.master,padx = 5,pady = 5)
@@ -325,11 +335,30 @@ class CanvasPage(Frame):
         self.create_cursor()
         self.c.place(relx=0.5, rely=0.5, anchor=CENTER)
 
-        p_width = int(self.controller.winfo_screenwidth()*.1)
+        p_width = int(self.controller.winfo_screenwidth()*.075)
         p_height = int(self.controller.winfo_screenheight()*.75)
-        self.p = Canvas(self, bg=BROWN_PALLETE, width=p_width, height=p_height)
-        # red_square = Label(self.p, pady=5, bg=RED)
-        # red_square.grid(row=0, column=0, rowspan=2, columnspan=2)
+        self.p = Frame(self, bg=BROWN_PALLETE, width=p_width, height=p_height)
+        square_width = 8
+        square_height= 4
+        red_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(RED), bg=RED, activebackground=RED, text="Red", font=('arial 12'))
+        red_square.grid(row=0, column=1)
+        orange_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(ORANGE), bg=ORANGE, activebackground=ORANGE, text="Orange", font=('arial 12'))
+        orange_square.grid(row=1, column=1)
+        yellow_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(YELLOW), bg=YELLOW, activebackground=YELLOW, text="Yellow", font=('arial 12'))
+        yellow_square.grid(row=2, column=1)
+        green_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(GREEN), bg=GREEN, activebackground=GREEN, text="Green", font=('arial 12'))
+        green_square.grid(row=3, column=1)
+        blue_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(BLUE), bg=BLUE, activebackground=BLUE, text="Blue", font=('arial 12'))
+        blue_square.grid(row=4, column=1)
+        purple_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(PURPLE), bg=PURPLE, activebackground=PURPLE, text="Purple", font=('arial 12'))
+        purple_square.grid(row=5, column=1)
+        self.custom_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(self.color_custom), bg=self.color_custom, activebackground=self.color_custom, text="Custom", font=('arial 12'))
+        self.custom_square.grid(row=6, column=1)
+        eraser = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg("white"), bg="white", activebackground="white", text="Eraser", font=('arial 12'))
+        eraser.grid(row=7, column=1)
+        # self.sv = StringVar()
+        # self.entry = Entry(self.p, textvariable=self.sv, validate="focusout", validatecommand=self.entry_callback)
+        # self.entry.grid(row=8, column=1)
         self.p.pack(side=RIGHT)
 
 def label_image(model, img):
@@ -351,8 +380,6 @@ def run():
     canvasPage = app.frames[CanvasPage]
     screen_width = app.winfo_screenwidth()
     screen_height = app.winfo_screenheight()
-    # c_width = int(self.controller.winfo_screenwidth()*.7)
-    # c_height = int(self.controller.winfo_screenheight()*.75)
     #Setup Speech Multithreading
     speech_callback_queue = queue.Queue()
 
@@ -368,17 +395,25 @@ def run():
             print("You said: " + spoken)
             words = spoken.split()
             if "red" in words:
-                canvasPage.change_fg('red')
+                canvasPage.change_fg(RED)
             elif "blue" in words:
-                canvasPage.change_fg('blue')
+                canvasPage.change_fg(BLUE)
+            elif "orange" in words:
+                canvasPage.change_fg(ORANGE)
             elif "green" in words:
-                canvasPage.change_fg('green')
+                canvasPage.change_fg(GREEN)
             elif "yellow" in words:
-                canvasPage.change_fg('yellow')
+                canvasPage.change_fg(YELLOW)
+            elif "purple" in words:
+                canvasPage.change_fg(PURPLE)
             elif "black" in words:
                 canvasPage.change_fg('black')
             elif "eraser" in words:
-                canvasPage.change_fg('pink')
+                canvasPage.change_fg('white')
+            elif "change" in words and "custom" in words and "color" in words:
+                canvasPage.change_fg()
+            elif "undo" in words:
+                speech_callback_queue.put(canvasPage.undo)
             elif "save" in words:
                 speech_callback_queue.put(canvasPage.save)
             elif "quit" in words or "exit" in words or "close" in words:
@@ -449,7 +484,6 @@ def run():
             pointer_position_mm = list(hand.palm_pos)
             
             if pointer_position_mm != [0, 0, 0] and is_in_bounds(pointer_position_mm):
-                print(pointer_position_mm)
                 x, y, z = mm_to_px(screen_width,screen_height,pointer_position_mm)
                 store.append((x,y,z))
                 if len(store) >= 1:
@@ -459,7 +493,7 @@ def run():
 
                     canvasPage.move_cursor_to(avg_x, avg_y)
 
-                    if avg_z <= -50:
+                    if avg_z <= 0:
                         canvasPage.gesture_paint(avg_x, avg_y)
                         canvasPage.fill_cursor()
                     else:
