@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath('..\pyleap'))
 
 from time import sleep
 import numpy as np
+import random
 
 #Face
 import cv2
@@ -98,6 +99,7 @@ class ArtStudioApp(Tk):
         colormenu = Menu(self.menu)
         self.menu.add_command(label="Home", command=lambda: self.show_frame(MainPage))
         self.menu.add_command(label="Change Custom Color", command=self.frames[CanvasPage].change_fg)
+        self.menu.add_command(label="New Suggestion", command=self.frames[CanvasPage].generate_suggestion)
         self.menu.add_command(label="Undo", command=self.frames[CanvasPage].undo)
         self.menu.add_command(label="Clear Canvas", command=self.frames[CanvasPage].clear)
         self.menu.add_command(label="Save", command=self.frames[CanvasPage].save)
@@ -172,7 +174,6 @@ class CanvasPage(Frame):
         self.isActive = False
         self.emotion = 'neutral'
         self.rgb = emotionsToRGB[self.emotion]
-        self.adaptRGB(self.emotion)
         self.color_custom = 'gray'
         self.custom_square = None
         self.color_fg = 'black'
@@ -184,11 +185,15 @@ class CanvasPage(Frame):
         self.cursor = None
         self.cursor_x = 50
         self.cursor_y = 50
+        self.entry = None
         self.penwidth = 20
-        self.selected = None
+        self.suggestion = StringVar()
+        self.suggestion.set("")
+        self.suggest_label = None
         self.c = None #painting canvas
-        self.p = None #color pallet
+        self.p = None #color pallete
         self.drawWidgets()
+        self.adaptRGB(self.emotion)
         self.c.bind('<B1-Motion>', self.paint) #drawing the line 
         self.c.bind('<ButtonRelease-1>', self.reset)
 
@@ -247,15 +252,12 @@ class CanvasPage(Frame):
             undo_line = self.all_lines.pop()
             for id in undo_line:
                 self.c.delete(id)
-
-    def changeW(self, e):
-        if self.isActive:
-            self.penwidth = e
            
     def clear(self):
         if self.isActive:
             self.c.delete(ALL)
             self.create_cursor()
+            self.suggestion.set("")
 
     def change_fg(self, color = None):  #changing the pen color
         if self.isActive:
@@ -291,6 +293,7 @@ class CanvasPage(Frame):
         color = '#{:02x}{:02x}{:02x}'.format(red2, green2, blue2)
         self.rgb = (red2, green2, blue2)
         self.config(bg=color)
+        self.suggest_label.config(bg=color)
 
     def adaptMusic(self, emotion):
         if emotion in {'happy', 'neutral'}:
@@ -309,6 +312,14 @@ class CanvasPage(Frame):
                         mixer_music.load("lib/neutral.mp3")
                     # mixer_music.play()
 
+    def generate_suggestion(self):
+        if self.isActive:
+            suggestions = ["Flower", "Happy Face", "Superhero", "Dog", "Cat"]
+            new_suggestion = "Draw a " + random.choice(suggestions)
+            while new_suggestion == self.suggestion.get():
+                new_suggestion = "Draw a " + random.choice(suggestions)
+            self.suggestion.set(new_suggestion)
+
     def save(self):
         if self.isActive:
             self.c.itemconfig(self.cursor, state='hidden')
@@ -318,9 +329,18 @@ class CanvasPage(Frame):
             self.c.itemconfig(self.cursor, state='normal')
             Image.open('drawing.jpg').show()
     
-    def entry_callback(self):
-        print(self.sv.get())
-        return True
+    def change_penwidth(self, e=None, size="20"):
+        if self.isActive:
+            if e != None:
+                self.penwidth = int(self.entry.get())
+            else:
+                self.penwidth = int(size)
+                self.entry.delete(0, END)
+                self.entry.insert(0, str(size))
+            self.focus()
+            self.c.delete(self.cursor)
+            self.create_cursor()
+            return True
 
     def drawWidgets(self):
         # self.controls = Frame(self.master,padx = 5,pady = 5)
@@ -335,30 +355,36 @@ class CanvasPage(Frame):
         self.create_cursor()
         self.c.place(relx=0.5, rely=0.5, anchor=CENTER)
 
+        self.suggest_label = Label(self, textvariable = self.suggestion, font=('arial 20'))
+        self.suggest_label.pack(side=TOP)
+
         p_width = int(self.controller.winfo_screenwidth()*.075)
         p_height = int(self.controller.winfo_screenheight()*.75)
         self.p = Frame(self, bg=BROWN_PALLETE, width=p_width, height=p_height)
         square_width = 8
         square_height= 4
+        brush_label = Label(self.p,  text="Brush Size", font=('arial 12'), bg=BROWN_PALLETE)
+        brush_label.grid(row=0, column=1, pady=2, padx=2)
+        self.entry = Entry(self.p, font=('arial 12'), width=3)
+        self.entry.insert(0, str(self.penwidth))
+        self.entry.bind("<Return>", self.change_penwidth)
+        self.entry.grid(row=0, column=2, pady=2, padx=2)
         red_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(RED), bg=RED, activebackground=RED, text="Red", font=('arial 12'))
-        red_square.grid(row=0, column=1)
+        red_square.grid(row=1, column=1, columnspan=2, pady=2)
         orange_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(ORANGE), bg=ORANGE, activebackground=ORANGE, text="Orange", font=('arial 12'))
-        orange_square.grid(row=1, column=1)
+        orange_square.grid(row=2, column=1, columnspan=2, pady=2)
         yellow_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(YELLOW), bg=YELLOW, activebackground=YELLOW, text="Yellow", font=('arial 12'))
-        yellow_square.grid(row=2, column=1)
+        yellow_square.grid(row=3, column=1, columnspan=2, pady=2)
         green_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(GREEN), bg=GREEN, activebackground=GREEN, text="Green", font=('arial 12'))
-        green_square.grid(row=3, column=1)
+        green_square.grid(row=4, column=1, columnspan=2, pady=2)
         blue_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(BLUE), bg=BLUE, activebackground=BLUE, text="Blue", font=('arial 12'))
-        blue_square.grid(row=4, column=1)
+        blue_square.grid(row=5, column=1, columnspan=2, pady=2)
         purple_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(PURPLE), bg=PURPLE, activebackground=PURPLE, text="Purple", font=('arial 12'))
-        purple_square.grid(row=5, column=1)
+        purple_square.grid(row=6, column=1, columnspan=2, pady=2)
         self.custom_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(self.color_custom), bg=self.color_custom, activebackground=self.color_custom, text="Custom", font=('arial 12'))
-        self.custom_square.grid(row=6, column=1)
+        self.custom_square.grid(row=7, column=1, columnspan=2, pady=2)
         eraser = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg("white"), bg="white", activebackground="white", text="Eraser", font=('arial 12'))
-        eraser.grid(row=7, column=1)
-        # self.sv = StringVar()
-        # self.entry = Entry(self.p, textvariable=self.sv, validate="focusout", validatecommand=self.entry_callback)
-        # self.entry.grid(row=8, column=1)
+        eraser.grid(row=8, column=1, columnspan=2, pady=2)
         self.p.pack(side=RIGHT)
 
 def label_image(model, img):
@@ -395,23 +421,50 @@ def run():
             print("You said: " + spoken)
             words = spoken.split()
             if "red" in words:
-                canvasPage.change_fg(RED)
+                func = lambda: canvasPage.change_fg(RED)
+                speech_callback_queue.put(func)
             elif "blue" in words:
-                canvasPage.change_fg(BLUE)
+                func = lambda: canvasPage.change_fg(BLUE)
+                speech_callback_queue.put(func)
             elif "orange" in words:
-                canvasPage.change_fg(ORANGE)
+                func = lambda: canvasPage.change_fg(ORANGE)
+                speech_callback_queue.put(func)
             elif "green" in words:
-                canvasPage.change_fg(GREEN)
+                func = lambda: canvasPage.change_fg(GREEN)
+                speech_callback_queue.put(func)
             elif "yellow" in words:
-                canvasPage.change_fg(YELLOW)
+                func = lambda: canvasPage.change_fg(YELLOW)
+                speech_callback_queue.put(func)
             elif "purple" in words:
-                canvasPage.change_fg(PURPLE)
+                func = lambda: canvasPage.change_fg(PURPLE)
+                speech_callback_queue.put(func)
             elif "black" in words:
-                canvasPage.change_fg('black')
+                func = lambda: canvasPage.change_fg('black')
+                speech_callback_queue.put(func)
             elif "eraser" in words:
-                canvasPage.change_fg('white')
+                func = lambda: canvasPage.change_fg('white')
+                speech_callback_queue.put(func)
+            elif all(item in ['what', 'should', 'i', 'draw'] for item in words) or \
+                    all(item in ['new', 'suggestion'] for item in words):
+                func = lambda: canvasPage.generate_suggestion()
+                speech_callback_queue.put(func)
+            elif "brush" in words and "size" in words:
+                prior = words.index("size")
+                try:
+                    size = words[prior+1]
+                    func = lambda: canvasPage.change_penwidth(size=size)
+                    speech_callback_queue.put(func)
+                except IndexError:
+                    pass
             elif "change" in words and "custom" in words and "color" in words:
-                canvasPage.change_fg()
+                func = lambda: canvasPage.change_fg()
+                speech_callback_queue.put(func)
+            elif "custom" in words:
+                func = lambda: canvasPage.change_fg(canvasPage.color_custom)
+                speech_callback_queue.put(func)
+            elif "clear" in words and "canvas" in words:
+                func = lambda: canvasPage.clear()
+                speech_callback_queue.put(func)
             elif "undo" in words:
                 speech_callback_queue.put(canvasPage.undo)
             elif "save" in words:
