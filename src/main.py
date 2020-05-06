@@ -67,7 +67,7 @@ class ArtStudioApp(Tk):
 
         self.frames = {}
 
-        for F in (MainPage, CanvasPage):
+        for F in (MainPage, CanvasPage, CallibrationPage):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky = NSEW)
@@ -75,7 +75,9 @@ class ArtStudioApp(Tk):
         self.menu = Menu(self)
         self.initializeMenu()
 
-        self.show_frame(MainPage)    
+        self.show_frame(MainPage)   
+
+        self.vs = cv2.VideoCapture(0) 
 
     def show_frame(self, cont, state=None):
         frame = self.frames[cont]
@@ -104,14 +106,6 @@ class ArtStudioApp(Tk):
         self.menu.add_command(label="Clear Canvas", command=self.frames[CanvasPage].clear)
         self.menu.add_command(label="Save", command=self.frames[CanvasPage].save)
         self.menu.add_command(label="Exit", command=self.destroy)
-        # self.menu.add_cascade(label='Colors',menu=colormenu)
-        # colormenu.add_command(label='Brush Color',command=self.frames[CanvasPage].change_fg)
-        # colormenu.add_command(label='Background Color',command=self.frames[CanvasPage].change_bg)
-        # optionmenu = Menu(self.menu)
-        # self.menu.add_cascade(label='Options',menu=optionmenu)
-        # optionmenu.add_command(label='Clear Canvas',command=self.frames[CanvasPage].clear)
-        # optionmenu.add_command(label='Save',command=self.frames[CanvasPage].save)
-        # optionmenu.add_command(label='Exit',command=self.destroy)
 
     def hideMenu(self):
         self.config(menu="")
@@ -139,14 +133,23 @@ class MainPage(Frame):
         photo = ImageTk.PhotoImage(file="lib/main_image.png")
         label_photo = Label(self, image=photo, bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
         label_photo.image = photo
-        label_photo.pack()
+        label_photo.pack(pady=2)
 
         button1 = Button(self, 
                          text="New Drawing", 
                          font=("Comic Sans MS", 20),
                          bg="white",
+                         width=20,
                          command=lambda: controller.show_frame(CanvasPage, state="NEW"))
-        button1.pack(pady=10)
+        button1.pack(pady=2)
+
+        self.button2 = Button(self, 
+                         text="Callibrate", 
+                         font=("Comic Sans MS", 20),
+                         bg="white",
+                         width=20,
+                         command=lambda: controller.show_frame(CallibrationPage))
+        self.button2.pack(pady=2)
 
     def activate(self):
         self.isActive = True
@@ -157,15 +160,82 @@ class MainPage(Frame):
     
     def showContinue(self):
         if not self.isContinue:
+            self.button2.destroy()
 
-            button2 = Button(self, 
+            button3 = Button(self, 
                              text="Continue Drawing", 
                              font=("Comic Sans MS", 20),
                              bg="white",
+                             width=20,
                              command=lambda: self.controller.show_frame(CanvasPage, state="CONTINUE"))
-            button2.pack()
+            button3.pack(pady=2)
+
+            self.button2 = Button(self, 
+                         text="Callibrate", 
+                         font=("Comic Sans MS", 20),
+                         bg="white",
+                         width=20,
+                         command=lambda: self.controller.show_frame(CallibrationPage))
+            self.button2.pack(pady=2)
 
             self.isContinue = True
+
+class CallibrationPage(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        self.config(bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+
+        self.isActive = False
+        self.current_image = None
+        self.i = 0
+
+        self.current_instruction = StringVar()
+        self.current_instruction.set("Angry")
+        self.banner = Label(self, textvariable = self.current_instruction, font=('arial 20'), bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+        self.banner.pack()
+
+        self.panel = Label(self)  # initialize image panel
+        self.panel.pack(padx=10, pady=10)
+
+        btn = Button(self, text="Capture Image", command=self.capture_image)
+        btn.pack(fill="both", expand=True, padx=10, pady=10)
+
+    def capture_image(self, e=None):
+        """ Capture image and save it. """
+        if self.isActive:
+            filenames = ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']
+            filename = filenames[self.i]
+            self.current_image.save(filename, "JPEG")  # save image as jpeg file
+            if self.i < 6:
+                self.i += 1
+                titles = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]
+                self.current_instruction.set(titles[self.i])
+            else:
+                #TODO TRANSFER LEARNING
+                self.controller.show_frame(MainPage)
+
+    def video_loop(self):
+        """ Get frame from the video stream and show it in Tkinter """
+        if self.isActive:
+            ok, frame = self.controller.vs.read()  # read frame from video stream
+            if ok:  # frame captured without any errors
+                cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # convert colors from BGR to RGB
+                self.current_image = Image.fromarray(cv2image)  # convert image for PIL
+                imgtk = ImageTk.PhotoImage(image=self.current_image)  # convert image for tkinter
+                self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
+                self.panel.config(image=imgtk)  # show the image
+            self.controller.after(30, self.video_loop)  # call the same function after 30 milliseconds
+
+    def activate(self):
+        self.isActive = True
+        # start a self.video_loop that constantly pools the video sensor
+        # for the most recently read frame
+        self.video_loop()
+
+    def deactivate(self):
+        self.isActive = False
+
 
 class CanvasPage(Frame):
     def __init__(self, parent, controller):
@@ -343,12 +413,7 @@ class CanvasPage(Frame):
             return True
 
     def drawWidgets(self):
-        # self.controls = Frame(self.master,padx = 5,pady = 5)
-        # Label(self.controls, text='Pen Width:',font=('arial 18')).grid(row=0,column=0)
-        # # self.slider = ttk.Scale(self.controls,from_= 5, to = 100,command=self.changeW,orient=VERTICAL)
-        # # self.slider.set(self.penwidth)
-        # # self.slider.grid(row=0,column=1,ipadx=30)
-        # self.controls.pack(side=LEFT)
+        """ Setting up the canvas and color pallete widgets. """
         c_width = int(self.controller.winfo_screenwidth()*.7)
         c_height = int(self.controller.winfo_screenheight()*.75)
         self.c = Canvas(self, width=c_width, height=c_height, bg=self.color_bg, cursor="circle")
@@ -489,7 +554,7 @@ def run():
 
     #Setup Emotion Recogntion
     faceCascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    video_capture = cv2.VideoCapture(0)
+    video_capture = app.vs
     emotionStore = {}
     emotionCount = 0
 

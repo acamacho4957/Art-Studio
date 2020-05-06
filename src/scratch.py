@@ -150,26 +150,82 @@
 #     print(1)
 #     pygame.time.delay(100)
 
-import pygame
-from pygame import mixer
+# import pygame
+# from pygame import mixer
 
-# Intialize the pygame
-pygame.init()
+# # Intialize the pygame
+# pygame.init()
 
-# create the screen
-screen = pygame.display.set_mode((800, 600))
+# # create the screen
+# screen = pygame.display.set_mode((800, 600))
 
-# Sound
-mixer.music.load("Just Lose It.mp3")
-mixer.music.play(-1)
+# # Sound
+# mixer.music.load("Just Lose It.mp3")
+# mixer.music.play(-1)
 
 
-# Game Loop
-running = True
-while running:
+# # Game Loop
+# running = True
+# while running:
 
-    # RGB = Red, Green, Blue
-    screen.fill((0, 0, 0))
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+#     # RGB = Red, Green, Blue
+#     screen.fill((0, 0, 0))
+#     for event in pygame.event.get():
+#         if event.type == pygame.QUIT:
+#             running = False
+import keras
+from keras.preprocessing import image
+from keras.preprocessing.image import ImageDataGenerator
+from keras.models import Model, load_model
+from keras.layers import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D, AveragePooling2D
+
+import numpy as np
+
+import matplotlib
+import matplotlib.pyplot as plt
+
+num_classes = 7 #angry, disgust, fear, happy, sad, surprise, neutral
+batch_size = 7
+epochs = 8
+
+def transfer():
+  # G. 1) Import data and reshape data
+  x_train, y_train = [], []
+  i = 0
+  for file_name in ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']:
+    img = image.load_img("training_data/" + file_name, color_mode = "grayscale", target_size=(48, 48))
+    x = image.img_to_array(img)
+    x /= 255
+    x_train.append(x)
+    y = np.array([1.0 if i == j else 0.0 for j in range(0, 7)])
+    y_train.append(y)
+    i += 1
+  x_train = np.array(x_train)
+  y_train = np.array(y_train)
+
+  # G. 2) Load model and train on training images
+  model = load_model('models/emotion_model.h5')
+  model.fit(x=x_train, y=y_train, batch_size=batch_size, epochs=epochs)
+
+#   # G. 3) Test newly trained model and save
+#   x_test, y_test = [], []
+#   i = 0
+#   for file_name in ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']:
+#     img = image.load_img("testing_data/" + file_name, color_mode = "grayscale", target_size=(48, 48))
+#     x = image.img_to_array(img)
+#     x /= 255
+#     x_test.append(x)
+#     x = np.expand_dims(x, axis = 0)
+#     custom = model.predict(x)
+#     plot_emotion_prediction(custom[0])
+#     y = np.array([1.0 if i == j else 0.0 for j in range(0, 7)])
+#     y_test.append(y)
+#     i += 1
+#   x_test = np.array(x_test)
+#   y_test = np.array(y_test)
+#   print(model.evaluate(x_test, y_test, batch_size=batch_size))
+
+  model.save('model_3.h5')
+  return
+
+transfer()
