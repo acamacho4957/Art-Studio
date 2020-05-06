@@ -67,7 +67,7 @@ class ArtStudioApp(Tk):
 
         self.frames = {}
 
-        for F in (MainPage, CanvasPage, CallibrationPage):
+        for F in (MainPage, CanvasPage, PreCalibrationPage, CallibrationPage):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky = NSEW)
@@ -155,7 +155,7 @@ class MainPage(Frame):
                          font=("Comic Sans MS", 20),
                          bg="white",
                          width=20,
-                         command=lambda: controller.show_frame(CallibrationPage, state="CALLIBRATE"))
+                         command=lambda: controller.show_frame(PreCalibrationPage, state="CALLIBRATE"))
         self.button2.pack(pady=2)
 
     def activate(self):
@@ -163,7 +163,7 @@ class MainPage(Frame):
 
     def deactivate(self):
         self.isActive = False
-        self.showContinue() #Once it's been deactivated, all future viewings of frame will have the continue button
+        # self.showContinue() #Once it's been deactivated, all future viewings of frame will have the continue button
     
     def showContinue(self):
         if not self.isContinue:
@@ -182,10 +182,42 @@ class MainPage(Frame):
                          font=("Comic Sans MS", 20),
                          bg="white",
                          width=20,
-                         command=lambda: self.controller.show_frame(CallibrationPage, state="CALLIBRATE"))
+                         command=lambda: self.controller.show_frame(PreCalibrationPage, state="CALLIBRATE"))
             self.button2.pack(pady=2)
 
             self.isContinue = True
+
+class PreCalibrationPage(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        self.isActive = False
+        self.config(bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+
+        self.instructions = Text(self, 
+                            font=('arial 20'),
+                            wrap=WORD,
+                            width = 50,
+                            height=7,
+                            relief=FLAT,
+                            padx=5,
+                            bg="white")
+        self.instructions.pack(pady=10)
+        self.instructions.insert(END, "Make the face as indicated at the top of the window. Once finished, the application will update the emotion recognition model accordingly and return Home automatically.\n\nNOTICE: Returing Home at any point will cancel the callibration process.")
+        self.instructions.config(state=DISABLED)
+        self.btn = Button(self, 
+                            text="Start Callibration", 
+                            command=lambda:self.controller.show_frame(CallibrationPage, state="CALLIBRATE"),
+                            width=20, 
+                            font=("arial", 20),
+                            bg = "white")
+        self.btn.pack(pady=10)
+
+    def activate(self):
+        self.isActive = True
+
+    def deactivate(self):
+        self.isActive = False
 
 class CallibrationPage(Frame):
     def __init__(self, parent, controller):
@@ -294,7 +326,6 @@ class CallibrationPage(Frame):
         self.face_location = None
         self.i = 0
 
-
 class CanvasPage(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
@@ -330,6 +361,8 @@ class CanvasPage(Frame):
 
     def deactivate(self):
         self.isActive = False
+        if len(self.all_lines) >0:
+            self.controller.frames[MainPage].showContinue()
 
     def paint(self, e):
         if self.isActive:

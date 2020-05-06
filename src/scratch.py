@@ -179,12 +179,7 @@ from keras.models import Model, load_model
 
 import numpy as np
 
-num_classes = 7 #angry, disgust, fear, happy, sad, surprise, neutral
-batch_size = 7
-epochs = 8
-
 def transfer():
-  # G. 1) Import data and reshape data
   x_train, y_train = [], []
   i = 0
   for file_name in ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']:
@@ -200,7 +195,7 @@ def transfer():
 
   # G. 2) Load model and train on training images
   model = load_model('models/emotion_model.h5')
-  model.fit(x=x_train, y=y_train, batch_size=batch_size, epochs=epochs)
+  model.fit(x=x_train, y=y_train, batch_size=7, epochs=8)
 
 #   # G. 3) Test newly trained model and save
 #   x_test, y_test = [], []
