@@ -175,14 +175,9 @@
 #             running = False
 import keras
 from keras.preprocessing import image
-from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model, load_model
-from keras.layers import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D, AveragePooling2D
 
 import numpy as np
-
-import matplotlib
-import matplotlib.pyplot as plt
 
 num_classes = 7 #angry, disgust, fear, happy, sad, surprise, neutral
 batch_size = 7
@@ -193,7 +188,7 @@ def transfer():
   x_train, y_train = [], []
   i = 0
   for file_name in ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']:
-    img = image.load_img("training_data/" + file_name, color_mode = "grayscale", target_size=(48, 48))
+    img = image.load_img(file_name, color_mode = "grayscale", target_size=(48, 48))
     x = image.img_to_array(img)
     x /= 255
     x_train.append(x)

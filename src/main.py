@@ -3,8 +3,8 @@ from tkinter import *
 from tkinter import ttk, colorchooser, PhotoImage
 from PIL import Image, ImageTk
 
-import sys, os
-sys.path.insert(0, os.path.abspath('..\pyleap'))
+# import sys, os
+# sys.path.insert(0, os.path.abspath('..\pyleap'))
 
 from time import sleep
 import numpy as np
@@ -13,6 +13,7 @@ import random
 #Face
 import cv2
 import keras
+import os
 from keras.preprocessing import image
 from keras.models import Model, load_model
 
@@ -35,10 +36,6 @@ import subprocess
 #Multithreading
 import queue
 
-
-model = load_model('models/emotion_model.h5')
-# model = load_model('models/model_3.h5')
-
 emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 emotionsToRGB = {'happy': (252, 252, 0), 'neutral': (40, 180, 252)}
 
@@ -58,6 +55,9 @@ class ArtStudioApp(Tk):
         self.title('Art Studio')
         self.state('zoomed')
 
+        self.model = None
+        self.update_model()
+
         container = Frame(self)
 
         container.pack(side=TOP, fill=BOTH, expand=True)
@@ -75,9 +75,13 @@ class ArtStudioApp(Tk):
         self.menu = Menu(self)
         self.initializeMenu()
 
+        self.secondary_menu = Menu(self)
+        self.secondary_menu.add_command(label="Home", command=lambda: self.show_frame(MainPage))
+
         self.show_frame(MainPage)   
 
         self.vs = cv2.VideoCapture(0) 
+        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
     def show_frame(self, cont, state=None):
         frame = self.frames[cont]
@@ -87,18 +91,18 @@ class ArtStudioApp(Tk):
                 F.deactivate()
 
         frame.activate()
-        if state is "NEW":
-            frame.clear() #Activate frame and clear the canvas for new painting
-            self.showMenu()
+        if state is "NEW": #Activate frame and clear the canvas for new painting
+            frame.clear()
+            self.config(menu=self.menu) #Show primary menu
         elif state is "CONTINUE":
-            self.showMenu()
+            self.config(menu=self.menu) #Show primary menu
+        elif state is "CALLIBRATE":
+            self.config(menu=self.secondary_menu) #Show secondary menu
         else:
-            self.hideMenu()
+            self.config(menu="")
         frame.tkraise()
 
     def initializeMenu(self):
-        filemenu = Menu(self.menu)
-        colormenu = Menu(self.menu)
         self.menu.add_command(label="Home", command=lambda: self.show_frame(MainPage))
         self.menu.add_command(label="Change Custom Color", command=self.frames[CanvasPage].change_fg)
         self.menu.add_command(label="New Suggestion", command=self.frames[CanvasPage].generate_suggestion)
@@ -107,11 +111,14 @@ class ArtStudioApp(Tk):
         self.menu.add_command(label="Save", command=self.frames[CanvasPage].save)
         self.menu.add_command(label="Exit", command=self.destroy)
 
-    def hideMenu(self):
-        self.config(menu="")
+    def update_model(self):
+        if os.path.exists('models/custom_model.h5'):
+            self.model = load_model('models/custom_model.h5')
+            print("new")
+        else:
+            self.model = load_model('models/emotion_model.h5')
+            print("old")
 
-    def showMenu(self):
-        self.config(menu=self.menu)
 
 class MainPage(Frame):
     def __init__(self, parent, controller):
@@ -148,7 +155,7 @@ class MainPage(Frame):
                          font=("Comic Sans MS", 20),
                          bg="white",
                          width=20,
-                         command=lambda: controller.show_frame(CallibrationPage))
+                         command=lambda: controller.show_frame(CallibrationPage, state="CALLIBRATE"))
         self.button2.pack(pady=2)
 
     def activate(self):
@@ -175,7 +182,7 @@ class MainPage(Frame):
                          font=("Comic Sans MS", 20),
                          bg="white",
                          width=20,
-                         command=lambda: self.controller.show_frame(CallibrationPage))
+                         command=lambda: self.controller.show_frame(CallibrationPage, state="CALLIBRATE"))
             self.button2.pack(pady=2)
 
             self.isContinue = True
@@ -187,54 +194,105 @@ class CallibrationPage(Frame):
         self.config(bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
 
         self.isActive = False
-        self.current_image = None
+        self.current_frame = None
+        self.face_location = None
         self.i = 0
 
         self.current_instruction = StringVar()
         self.current_instruction.set("Angry")
-        self.banner = Label(self, textvariable = self.current_instruction, font=('arial 20'), bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+        self.banner = Label(self, textvariable = self.current_instruction, font=('arial 30'), bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
         self.banner.pack()
+        self.advice = Label(self, text = "For best results, look directly into camera and remove any obstructions (e.g. glasses)", font=('arial 20'), bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+        self.advice.pack()
 
         self.panel = Label(self)  # initialize image panel
         self.panel.pack(padx=10, pady=10)
 
-        btn = Button(self, text="Capture Image", command=self.capture_image)
-        btn.pack(fill="both", expand=True, padx=10, pady=10)
+        self.btn = Button(self, text="Capture Image", command=self.capture_image, width=20, font=("arial", 20))
+        self.btn.pack(pady=10)
 
     def capture_image(self, e=None):
-        """ Capture image and save it. """
+        """ 
+        Capture image and save it. 
+        If all necessary images have been captures, will proceed with transfer learning.
+        """
         if self.isActive:
             filenames = ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']
             filename = filenames[self.i]
-            self.current_image.save(filename, "JPEG")  # save image as jpeg file
+            formatted_img = self.convert_frame_2_image(self.current_frame)
+            formatted_img.save("training_data/" + filename, "JPEG")  # save image as jpeg file
             if self.i < 6:
                 self.i += 1
                 titles = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]
                 self.current_instruction.set(titles[self.i])
             else:
-                #TODO TRANSFER LEARNING
+                self.current_instruction.set("Please Wait...")
+                self.controller.update_idletasks()
+                self.controller.update()
+                self.transfer()
+                self.controller.update_model()
                 self.controller.show_frame(MainPage)
+
+    def convert_frame_2_image(self, frame):
+        """ Crop, Gray, and Convert Image for PIL """
+        x, y, w, h = self.face_location
+        cropped_img = frame[y:y+h, x:x+w].copy()
+        grayed_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+        return Image.fromarray(grayed_img)
 
     def video_loop(self):
         """ Get frame from the video stream and show it in Tkinter """
         if self.isActive:
-            ok, frame = self.controller.vs.read()  # read frame from video stream
-            if ok:  # frame captured without any errors
-                cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # convert colors from BGR to RGB
-                self.current_image = Image.fromarray(cv2image)  # convert image for PIL
-                imgtk = ImageTk.PhotoImage(image=self.current_image)  # convert image for tkinter
+            ret, frame = self.controller.vs.read()  # read frame from video stream
+            if ret:  # frame captured without any errors
+                self.current_frame = frame
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = self.controller.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+                
+                color_corrected = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  #convert colors for user
+
+                # Draw a rectangle around the faces
+                for (x, y, w, h) in faces:
+                    self.face_location = (x, y, w, h)
+                    cv2.rectangle(color_corrected, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
+                current_image = Image.fromarray(color_corrected)  # convert image for PIL
+                imgtk = ImageTk.PhotoImage(image=current_image)  # convert image for tkinter
                 self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
                 self.panel.config(image=imgtk)  # show the image
             self.controller.after(30, self.video_loop)  # call the same function after 30 milliseconds
+
+    def transfer(self):
+        x_train, y_train = [], []
+        i = 0
+        for file_name in ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']:
+            img = image.load_img("training_data/" + file_name, color_mode = "grayscale", target_size=(48, 48))
+            x = image.img_to_array(img)/255
+            x_train.append(x)
+            y = np.array([1.0 if i == j else 0.0 for j in range(0, 7)])
+            y_train.append(y)
+            i += 1
+        x_train = np.array(x_train)
+        y_train = np.array(y_train)
+
+        # Load model and train on training images
+        prior_model = load_model('models/emotion_model.h5')
+        prior_model.fit(x=x_train, y=y_train, batch_size=7, epochs=8)
+        prior_model.save('models/custom_model.h5')
+        return
 
     def activate(self):
         self.isActive = True
         # start a self.video_loop that constantly pools the video sensor
         # for the most recently read frame
+        self.current_instruction.set("Angry")
         self.video_loop()
 
     def deactivate(self):
         self.isActive = False
+        self.current_frame = None
+        self.face_location = None
+        self.i = 0
 
 
 class CanvasPage(Frame):
@@ -553,7 +611,7 @@ def run():
     # stop_listening = listen_in_background(r, m, speech_callback, phrase_time_limit=3)
 
     #Setup Emotion Recogntion
-    faceCascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    faceCascade = app.face_cascade
     video_capture = app.vs
     emotionStore = {}
     emotionCount = 0
@@ -584,7 +642,7 @@ def run():
                 grayed_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
                 reshaped_img = grayed_img.reshape((48, 48, 1))
 
-                label = label_image(model, reshaped_img)
+                label = label_image(app.model, reshaped_img)
                 emotionStore[label] = emotionStore.get(label, 0) + 1
                 emotionCount += 1
                 if emotionCount >= 100:
