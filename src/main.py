@@ -37,15 +37,15 @@ import subprocess
 import queue
 
 emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
-emotionsToRGB = {'happy': (252, 252, 0), 'neutral': (40, 180, 252)}
+emotionsToRGB = {'happy': (252,252,152), 'neutral': (40, 180, 252), 'angry': (178,34,34)}
 
 BROWN_PALLETE = '#{:02x}{:02x}{:02x}'.format(232, 208, 132)
-RED = "red"
-ORANGE = "orange"
-YELLOW = "yellow"
-GREEN = "green"
-BLUE = "blue"
-PURPLE = "purple"
+RED =           '#{:02x}{:02x}{:02x}'.format(176,32,32) #maroon
+ORANGE = 	    '#{:02x}{:02x}{:02x}'.format(255,140,0) #dark orange
+YELLOW =        '#{:02x}{:02x}{:02x}'.format(252,252,152) #light yellow
+GREEN =         '#{:02x}{:02x}{:02x}'.format(60,179,113) #medium sea green
+BLUE =          '#{:02x}{:02x}{:02x}'.format(70,130,180) #steel blue
+PURPLE =        '#{:02x}{:02x}{:02x}'.format(147,112,219) #medium purple
 
 class ArtStudioApp(Tk):
     def __init__(self, *args, **kwargs):
@@ -67,7 +67,7 @@ class ArtStudioApp(Tk):
 
         self.frames = {}
 
-        for F in (MainPage, CanvasPage, PreCalibrationPage, CallibrationPage):
+        for F in (MainPage, CanvasPage, PreCalibrationPage, CallibrationPage, HelpPage):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky = NSEW)
@@ -96,7 +96,7 @@ class ArtStudioApp(Tk):
             self.config(menu=self.menu) #Show primary menu
         elif state is "CONTINUE":
             self.config(menu=self.menu) #Show primary menu
-        elif state is "CALLIBRATE":
+        elif state is "CALLIBRATE" or state is "HELP":
             self.config(menu=self.secondary_menu) #Show secondary menu
         else:
             self.config(menu="")
@@ -109,15 +109,14 @@ class ArtStudioApp(Tk):
         self.menu.add_command(label="Undo", command=self.frames[CanvasPage].undo)
         self.menu.add_command(label="Clear Canvas", command=self.frames[CanvasPage].clear)
         self.menu.add_command(label="Save", command=self.frames[CanvasPage].save)
+        self.menu.add_command(label="Help", command=lambda: self.show_frame(HelpPage, state="HELP"))
         self.menu.add_command(label="Exit", command=self.destroy)
 
     def update_model(self):
         if os.path.exists('models/custom_model.h5'):
             self.model = load_model('models/custom_model.h5')
-            print("new")
         else:
             self.model = load_model('models/emotion_model.h5')
-            print("old")
 
 
 class MainPage(Frame):
@@ -131,7 +130,7 @@ class MainPage(Frame):
 
         label = Label(self,
                       text="Welcome to Art Studio",
-                      font=("Comic Sans MS", 40),
+                      font=("Arial", 40),
                       fg="white",
                       bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
 
@@ -142,17 +141,17 @@ class MainPage(Frame):
         label_photo.image = photo
         label_photo.pack(pady=2)
 
-        button1 = Button(self, 
+        self.button1 = Button(self, 
                          text="New Drawing", 
-                         font=("Comic Sans MS", 20),
+                         font=("Arial", 20),
                          bg="white",
                          width=20,
                          command=lambda: controller.show_frame(CanvasPage, state="NEW"))
-        button1.pack(pady=2)
+        self.button1.pack(pady=(10,2))
 
         self.button2 = Button(self, 
                          text="Callibrate", 
-                         font=("Comic Sans MS", 20),
+                         font=("Arial", 20),
                          bg="white",
                          width=20,
                          command=lambda: controller.show_frame(PreCalibrationPage, state="CALLIBRATE"))
@@ -167,25 +166,66 @@ class MainPage(Frame):
     
     def showContinue(self):
         if not self.isContinue:
-            self.button2.destroy()
+            self.button2.pack_forget()
 
-            button3 = Button(self, 
+            self.button3 = Button(self, 
                              text="Continue Drawing", 
-                             font=("Comic Sans MS", 20),
+                             font=("Arial", 20),
                              bg="white",
                              width=20,
                              command=lambda: self.controller.show_frame(CanvasPage, state="CONTINUE"))
-            button3.pack(pady=2)
+            self.button3.pack(pady=2)
 
-            self.button2 = Button(self, 
-                         text="Callibrate", 
-                         font=("Comic Sans MS", 20),
-                         bg="white",
-                         width=20,
-                         command=lambda: self.controller.show_frame(PreCalibrationPage, state="CALLIBRATE"))
             self.button2.pack(pady=2)
 
             self.isContinue = True
+    
+    def hideContinue(self):
+        if self.isContinue:
+            self.button3.pack_forget()
+            self.isContinue = False
+
+class HelpPage(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        self.isActive = False
+        self.config(bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+
+        self.instructions = Text(self, 
+                            font=('arial 20'),
+                            wrap=WORD,
+                            width = 50,
+                            height=22,
+                            relief=FLAT,
+                            padx=5,
+                            bg="white")
+        self.instructions.pack(pady=10)
+        self.instructions.insert(END, "GETTING STARTED\n")
+        self.instructions.insert(END, "If you are a new user, be sure to go through the callibration steps from the Home page (accessible from the top left corner).\n\n")
+        self.instructions.insert(END, "THE BASICS\n")
+        self.instructions.insert(END, "Art Studio is a gesture and speech based drawing program. From the Home screen, you can navigate to the ")
+        self.instructions.insert(END, "painting canvas by pressing the New Drawing button. There are are 3 main parts to the screen. \n")
+        self.instructions.insert(END, "\nThe Menu\nLocated at the top of the screen and contains many different tools. These can be clicked or read aloud to be recognized by the system.\n")
+        self.instructions.insert(END, "\nThe Canvas\nLocated in the middle of the screen. To draw on the canvas, use your pointer finger over the Leap controller to gesture. The cursor ")
+        self.instructions.insert(END, "will follow your finger. A hollow cursor means you aren't drawing. When you cross the vertical plane over the Leap, the cursor will fill in, ")
+        self.instructions.insert(END, "indicating that you are now drawing on the canvas. For best results, keep finger aligned with palm and forearm. You can also use the mouse to draw.\n")
+        self.instructions.insert(END, "\nThe Pallete\nLocated at the right of the screen. These buttons can be clicked or read aloud. Brush size requires a keyboard input.")
+        self.instructions.config(state=DISABLED)
+        
+        self.btn = Button(self, 
+                            text="Get Drawing!", 
+                            command=lambda:self.controller.show_frame(CanvasPage, state="CONTINUE"),
+                            width=20, 
+                            font=("arial", 20),
+                            bg = "white")
+        self.btn.pack(side=BOTTOM, pady=10)
+
+    def activate(self):
+        self.isActive = True
+
+    def deactivate(self):
+        self.isActive = False
 
 class PreCalibrationPage(Frame):
     def __init__(self, parent, controller):
@@ -198,20 +238,25 @@ class PreCalibrationPage(Frame):
                             font=('arial 20'),
                             wrap=WORD,
                             width = 50,
-                            height=7,
+                            height=11,
                             relief=FLAT,
                             padx=5,
                             bg="white")
         self.instructions.pack(pady=10)
-        self.instructions.insert(END, "Make the face as indicated at the top of the window. Once finished, the application will update the emotion recognition model accordingly and return Home automatically.\n\nNOTICE: Returing Home at any point will cancel the callibration process.")
+        self.instructions.insert(END, "Make the face as instructed at the top of the window. Once finished, ")
+        self.instructions.insert(END, "the application will update the emotion recognition model accordingly ")
+        self.instructions.insert(END, "and return Home automatically.\n\nFor best results, look directly into the camera and remove any obstructions (e.g. glasses).")
+        self.instructions.insert(END, "Ensure that your face is well lit and that your face is being recognized (as indicated by the green bordering square).")
+        self.instructions.insert(END, "\n\nNOTICE: Returing Home at any point will cancel the callibration process.")
         self.instructions.config(state=DISABLED)
+        
         self.btn = Button(self, 
                             text="Start Callibration", 
                             command=lambda:self.controller.show_frame(CallibrationPage, state="CALLIBRATE"),
                             width=20, 
                             font=("arial", 20),
                             bg = "white")
-        self.btn.pack(pady=10)
+        self.btn.pack(side=BOTTOM, pady=10)
 
     def activate(self):
         self.isActive = True
@@ -234,7 +279,7 @@ class CallibrationPage(Frame):
         self.current_instruction.set("Angry")
         self.banner = Label(self, textvariable = self.current_instruction, font=('arial 30'), bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
         self.banner.pack()
-        self.advice = Label(self, text = "For best results, look directly into camera and remove any obstructions (e.g. glasses)", font=('arial 20'), bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
+        self.advice = Label(self, text = "For best results, look directly into camera and remove any obstructions (e.g. glasses).", font=('arial 20'), bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
         self.advice.pack()
 
         self.panel = Label(self)  # initialize image panel
@@ -315,8 +360,6 @@ class CallibrationPage(Frame):
 
     def activate(self):
         self.isActive = True
-        # start a self.video_loop that constantly pools the video sensor
-        # for the most recently read frame
         self.current_instruction.set("Angry")
         self.video_loop()
 
@@ -333,6 +376,7 @@ class CanvasPage(Frame):
         self.isActive = False
         self.emotion = 'neutral'
         self.rgb = emotionsToRGB[self.emotion]
+        self.isErasing = False
         self.color_custom = 'gray'
         self.custom_square = None
         self.color_fg = 'black'
@@ -349,6 +393,9 @@ class CanvasPage(Frame):
         self.suggestion = StringVar()
         self.suggestion.set("")
         self.suggest_label = None
+        self.speech = StringVar()
+        self.speech.set("You Said: ")
+        self.speech_label = None
         self.c = None #painting canvas
         self.p = None #color pallete
         self.drawWidgets()
@@ -361,8 +408,10 @@ class CanvasPage(Frame):
 
     def deactivate(self):
         self.isActive = False
-        if len(self.all_lines) >0:
+        if len(self.all_lines) > 0:
             self.controller.frames[MainPage].showContinue()
+        else:
+            self.controller.frames[MainPage].hideContinue()
 
     def paint(self, e):
         if self.isActive:
@@ -396,10 +445,16 @@ class CanvasPage(Frame):
                 self.cursor_y = y
     
     def fill_cursor(self):
-        self.c.itemconfig(self.cursor, fill=self.color_fg, outline=self.color_fg, width = 4)
+        if self.isErasing:
+            self.c.itemconfig(self.cursor, fill="pink", outline="pink", width = 4)
+        else:
+            self.c.itemconfig(self.cursor, fill=self.color_fg, outline=self.color_fg, width = 4)
 
     def empty_cursor(self):
-        self.c.itemconfig(self.cursor, fill=self.color_bg, outline=self.color_fg, width = 4)
+        if self.isErasing:
+            self.c.itemconfig(self.cursor, fill=self.color_bg, outline="pink", width = 4)
+        else:
+            self.c.itemconfig(self.cursor, fill=self.color_bg, outline=self.color_fg, width = 4)
 
     def reset(self, e = None): #finishing a stroke
         self.old_x = None
@@ -419,13 +474,21 @@ class CanvasPage(Frame):
             self.c.delete(ALL)
             self.create_cursor()
             self.suggestion.set("")
+            self.all_lines = []
+            self.recent_line = []
 
-    def change_fg(self, color = None):  #changing the pen color
+    def change_fg(self, color = None, eraser = False):  #changing the pen color
         if self.isActive:
-            if color is None:
-                self.color_fg = colorchooser.askcolor(color=self.color_fg)[1]
-                self.color_custom = self.color_fg
-                self.custom_square.config(bg=self.color_custom, activebackground=self.color_custom)
+            self.isErasing = False
+            if color is None and not eraser:
+                result, selected = colorchooser.askcolor(color=self.color_fg)[1]
+                if result is not None:
+                    self.color_fg = selected
+                    self.color_custom = self.color_fg
+                    self.custom_square.config(bg=self.color_custom, activebackground=self.color_custom)
+            elif eraser:
+                self.color_fg = "white"
+                self.isErasing = True
             else: 
                 self.color_fg = color
                 self.empty_cursor()
@@ -436,10 +499,10 @@ class CanvasPage(Frame):
             self.c['bg'] = self.color_bg
 
     def adaptRGB(self, emotionName):
-        if emotionName == 'happy':
-            r, g, b = emotionsToRGB[emotionName] #yellow
+        if emotionName in {'happy', 'angry'}:
+            r, g, b = emotionsToRGB[emotionName]
         else:
-            r, g, b  = emotionsToRGB['neutral'] #deep sky blue 2
+            r, g, b  = emotionsToRGB['neutral']
 
         dr, db, dg = 0, 0, 0
         if r != self.rgb[0]:
@@ -455,23 +518,26 @@ class CanvasPage(Frame):
         self.rgb = (red2, green2, blue2)
         self.config(bg=color)
         self.suggest_label.config(bg=color)
+        self.speech_label.config(bg=color)
 
     def adaptMusic(self, emotion):
-        if emotion in {'happy', 'neutral'}:
+        if emotion in {'happy', 'neutral', 'angry'}:
             if self.emotion != emotion:
                 self.emotion = emotion
                 if mixer_music.get_busy():
                     mixer_music.fadeout(500)
             else:
                 if mixer_music.get_volume() <= .95:
-                    mixer_music.set_volume(mixer_music.get_volume() + 0.019)
+                    mixer_music.set_volume(mixer_music.get_volume() + 0.010)
                 if not mixer_music.get_busy():
                     mixer_music.set_volume(0)
                     if emotion == 'happy':
                         mixer_music.load("lib/happy.mp3")
+                    elif emotion == 'angry':
+                        mixer_music.load("lib/angry.mp3")
                     else:
                         mixer_music.load("lib/neutral.mp3")
-                    # mixer_music.play()
+                    mixer_music.play()
 
     def generate_suggestion(self):
         if self.isActive:
@@ -539,14 +605,29 @@ class CanvasPage(Frame):
         purple_square.grid(row=6, column=1, columnspan=2, pady=2)
         self.custom_square = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(self.color_custom), bg=self.color_custom, activebackground=self.color_custom, text="Custom", font=('arial 12'))
         self.custom_square.grid(row=7, column=1, columnspan=2, pady=2)
-        eraser = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg("white"), bg="white", activebackground="white", text="Eraser", font=('arial 12'))
+        eraser = Button(self.p, width=square_width, height=square_height, command=lambda: self.change_fg(eraser=True), bg="white", activebackground="white", text="Eraser", font=('arial 12'))
         eraser.grid(row=8, column=1, columnspan=2, pady=2)
         self.p.pack(side=RIGHT)
+
+        self.speech_label = Label(self, textvariable = self.speech, font=('arial 18'))
+        self.speech_label.pack(side=BOTTOM)
 
 def label_image(model, img):
     x = np.expand_dims(image.img_to_array(img), axis = 0)/255
     custom = model.predict(x)
-    return emotions[custom[0].tolist().index(max(custom[0]))]
+    # modified = [custom[0][i] if i in {0, 3, 6} else 0 for i in range(7)]
+    # return emotions[custom[0].tolist().index(max(custom[0]))]
+    # return emotions[modified.index(max(modified))]
+    max_i = custom[0].tolist().index(max(custom[0]))
+    if max_i in {0, 1}:
+        # print(emotions[max_i] +" -> angry")
+        return "angry"
+    elif max_i in {3}:
+        # print(emotions[max_i] +" -> happy")
+        return "happy"
+    else:
+        # print(emotions[max_i] +" -> neutral")
+        return "neutral"
 
 def mm_to_px(screenWidth, screenHeight, position):
     x, y, z = position
@@ -574,7 +655,9 @@ def run():
         print("Audio received")
         try:
             spoken = recognizer.recognize_google(audio).lower()
-            print("You said: " + spoken)
+            text = "You said: " + spoken
+            print(text)
+            speech_callback_queue.put(lambda: canvasPage.speech.set(text))
             words = spoken.split()
             if "red" in words:
                 func = lambda: canvasPage.change_fg(RED)
@@ -598,7 +681,7 @@ def run():
                 func = lambda: canvasPage.change_fg('black')
                 speech_callback_queue.put(func)
             elif "eraser" in words:
-                func = lambda: canvasPage.change_fg('white')
+                func = lambda: canvasPage.change_fg(eraser=True)
                 speech_callback_queue.put(func)
             elif all(item in ['what', 'should', 'i', 'draw'] for item in words) or \
                     all(item in ['new', 'suggestion'] for item in words):
@@ -629,7 +712,10 @@ def run():
                 speech_callback_queue.put(canvasPage.master.destroy)
             elif "home" in words:
                 speech_callback_queue.put(lambda: app.show_frame(MainPage))
+            elif "home" in words:
+                speech_callback_queue.put(lambda: app.show_frame(HelpPage, state="HELP"))
         except sr.UnknownValueError:
+            speech_callback_queue.put(lambda: canvasPage.speech.set("You said: ... "))
             print("Google Speech Recognition could not understand audio")
         except sr.RequestError as e:
             print("Could not request results from Google Speech Recognition service; {0}".format(e))
@@ -641,7 +727,6 @@ def run():
     with m as source:
         r.adjust_for_ambient_noise(source)
     stop_listening = r.listen_in_background(m, speech_callback, phrase_time_limit=3)
-    # stop_listening = listen_in_background(r, m, speech_callback, phrase_time_limit=3)
 
     #Setup Emotion Recogntion
     faceCascade = app.face_cascade
@@ -649,13 +734,14 @@ def run():
     emotionStore = {}
     emotionCount = 0
 
-    #Setup Speech Recognition
+    #Setup Gesture Smoothing
     store = []
+    recent = None
 
     #Setup Audio
     pygame.init()
     mixer_music.load("lib/neutral.mp3")
-    # mixer_music.play()
+    mixer_music.play()
 
     #Main loop
     while True:
@@ -678,8 +764,15 @@ def run():
                 label = label_image(app.model, reshaped_img)
                 emotionStore[label] = emotionStore.get(label, 0) + 1
                 emotionCount += 1
-                if emotionCount >= 100:
-                    prevalent = max(emotionStore, key=lambda key: emotionStore[key])
+
+                if emotionCount >= 500:
+                    print(emotionStore)
+                    if emotionStore.get("angry", 0) >= 100 and emotionStore.get("angry", 0) > emotionStore.get("happy", 0):
+                        prevalent = "angry"
+                    elif emotionStore.get("happy", 0) >= 100 and emotionStore.get("happy", 0) > emotionStore.get("angry", 0):
+                        prevalent = "happy"
+                    else:
+                        prevalent = "neutral"
                     canvasPage.adaptRGB(prevalent)
                     canvasPage.adaptMusic(prevalent)
                     emotionStore = {}
