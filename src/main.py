@@ -3,9 +3,6 @@ from tkinter import *
 from tkinter import ttk, colorchooser, PhotoImage
 from PIL import Image, ImageTk
 
-# import sys, os
-# sys.path.insert(0, os.path.abspath('..\pyleap'))
-
 from time import sleep
 import numpy as np
 import random
@@ -37,7 +34,7 @@ import subprocess
 import queue
 
 emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
-emotionsToRGB = {'happy': (252,252,152), 'neutral': (40, 180, 252), 'angry': (178,34,34)}
+emotionsToRGB = {'happy': (252,252,152), 'neutral': (40, 180, 252), 'angry': (176,32,32)}
 
 BROWN_PALLETE = '#{:02x}{:02x}{:02x}'.format(232, 208, 132)
 RED =           '#{:02x}{:02x}{:02x}'.format(176,32,32) #maroon
@@ -55,6 +52,7 @@ class ArtStudioApp(Tk):
         self.title('Art Studio')
         self.state('zoomed')
 
+        self.isFirstStart = True
         self.model = None
         self.update_model()
 
@@ -73,22 +71,28 @@ class ArtStudioApp(Tk):
             frame.grid(row=0, column=0, sticky = NSEW)
 
         self.menu = Menu(self)
-        self.initializeMenu()
+        self.intitalize_menu()
 
         self.secondary_menu = Menu(self)
         self.secondary_menu.add_command(label="Home", command=lambda: self.show_frame(MainPage))
 
-        self.show_frame(MainPage)   
+        if self.isFirstStart:
+            self.show_frame(HelpPage, state="HELP")
+        else:
+            self.show_frame(MainPage)   
 
         self.vs = cv2.VideoCapture(0) 
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
     def show_frame(self, cont, state=None):
+        """ 
+        Activate "cont" frame and bring to the front of the window. Deactivate all other frames.
+        State can be "NEW" "CONTINUE" "CALLIBRATE" or "HELP"
+        """
         frame = self.frames[cont]
 
         for F in self.frames.values():
-            if F != frame:
-                F.deactivate()
+            if F != frame: F.deactivate()
 
         frame.activate()
         if state is "NEW": #Activate frame and clear the canvas for new painting
@@ -99,10 +103,11 @@ class ArtStudioApp(Tk):
         elif state is "CALLIBRATE" or state is "HELP":
             self.config(menu=self.secondary_menu) #Show secondary menu
         else:
-            self.config(menu="")
+            self.config(menu="") #Hide all menus
         frame.tkraise()
 
-    def initializeMenu(self):
+    def intitalize_menu(self):
+        """Add commands to the primary menu. """
         self.menu.add_command(label="Home", command=lambda: self.show_frame(MainPage))
         self.menu.add_command(label="Change Custom Color", command=self.frames[CanvasPage].change_fg)
         self.menu.add_command(label="New Suggestion", command=self.frames[CanvasPage].generate_suggestion)
@@ -113,8 +118,10 @@ class ArtStudioApp(Tk):
         self.menu.add_command(label="Exit", command=self.destroy)
 
     def update_model(self):
+        """ Load callibrated custom_model if it exists, otherwise load standard emotion_model. """
         if os.path.exists('models/custom_model.h5'):
             self.model = load_model('models/custom_model.h5')
+            self.isFirstStart = False
         else:
             self.model = load_model('models/emotion_model.h5')
 
@@ -133,7 +140,6 @@ class MainPage(Frame):
                       font=("Arial", 40),
                       fg="white",
                       bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
-
         label.pack(pady=10, padx=10)
 
         photo = ImageTk.PhotoImage(file="lib/main_image.png")
@@ -162,9 +168,9 @@ class MainPage(Frame):
 
     def deactivate(self):
         self.isActive = False
-        # self.showContinue() #Once it's been deactivated, all future viewings of frame will have the continue button
     
-    def showContinue(self):
+    def show_continue(self):
+        """ Show "Continue Drawing" Button if it is not already showing. """
         if not self.isContinue:
             self.button2.pack_forget()
 
@@ -180,7 +186,8 @@ class MainPage(Frame):
 
             self.isContinue = True
     
-    def hideContinue(self):
+    def hide_continue(self):
+        """ Hide "Continue Drawing" Button. """
         if self.isContinue:
             self.button3.pack_forget()
             self.isContinue = False
@@ -192,14 +199,8 @@ class HelpPage(Frame):
         self.isActive = False
         self.config(bg='#{:02x}{:02x}{:02x}'.format(40, 180, 252))
 
-        self.instructions = Text(self, 
-                            font=('arial 20'),
-                            wrap=WORD,
-                            width = 50,
-                            height=22,
-                            relief=FLAT,
-                            padx=5,
-                            bg="white")
+        self.instructions = Text(self, font=('arial 20'), wrap=WORD, width = 50,
+                            height=22, relief=FLAT, padx=5,bg="white")
         self.instructions.pack(pady=10)
         self.instructions.insert(END, "GETTING STARTED\n")
         self.instructions.insert(END, "If you are a new user, be sure to go through the callibration steps from the Home page (accessible from the top left corner).\n\n")
@@ -296,7 +297,7 @@ class CallibrationPage(Frame):
         if self.isActive:
             filenames = ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']
             filename = filenames[self.i]
-            formatted_img = self.convert_frame_2_image(self.current_frame)
+            formatted_img = self.convert_frame_to_image(self.current_frame)
             formatted_img.save("training_data/" + filename, "JPEG")  # save image as jpeg file
             if self.i < 6:
                 self.i += 1
@@ -310,7 +311,7 @@ class CallibrationPage(Frame):
                 self.controller.update_model()
                 self.controller.show_frame(MainPage)
 
-    def convert_frame_2_image(self, frame):
+    def convert_frame_to_image(self, frame):
         """ Crop, Gray, and Convert Image for PIL """
         x, y, w, h = self.face_location
         cropped_img = frame[y:y+h, x:x+w].copy()
@@ -320,26 +321,27 @@ class CallibrationPage(Frame):
     def video_loop(self):
         """ Get frame from the video stream and show it in Tkinter """
         if self.isActive:
-            ret, frame = self.controller.vs.read()  # read frame from video stream
-            if ret:  # frame captured without any errors
+            ret, frame = self.controller.vs.read()  #read frame from video stream
+            if ret:  #frame captured without any errors
                 self.current_frame = frame
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 faces = self.controller.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
                 
                 color_corrected = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  #convert colors for user
 
-                # Draw a rectangle around the faces
+                #draw a rectangle around the faces
                 for (x, y, w, h) in faces:
                     self.face_location = (x, y, w, h)
                     cv2.rectangle(color_corrected, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
                 current_image = Image.fromarray(color_corrected)  # convert image for PIL
                 imgtk = ImageTk.PhotoImage(image=current_image)  # convert image for tkinter
-                self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
-                self.panel.config(image=imgtk)  # show the image
-            self.controller.after(30, self.video_loop)  # call the same function after 30 milliseconds
+                self.panel.imgtk = imgtk 
+                self.panel.config(image=imgtk)
+            self.controller.after(30, self.video_loop)
 
     def transfer(self):
+        """ Do transfer learning on emotion_model using training images from webcam. """
         x_train, y_train = [], []
         i = 0
         for file_name in ['angry.jpg', 'disgust.jpg', 'fear.jpg', 'happy.jpg','sad.jpg', 'surprise.jpg', 'neutral.jpg']:
@@ -352,7 +354,7 @@ class CallibrationPage(Frame):
         x_train = np.array(x_train)
         y_train = np.array(y_train)
 
-        # Load model and train on training images
+        #load emotion_model and train on training images
         prior_model = load_model('models/emotion_model.h5')
         prior_model.fit(x=x_train, y=y_train, batch_size=7, epochs=8)
         prior_model.save('models/custom_model.h5')
@@ -409,9 +411,9 @@ class CanvasPage(Frame):
     def deactivate(self):
         self.isActive = False
         if len(self.all_lines) > 0:
-            self.controller.frames[MainPage].showContinue()
+            self.controller.frames[MainPage].show_continue()
         else:
-            self.controller.frames[MainPage].hideContinue()
+            self.controller.frames[MainPage].hide_continue()
 
     def paint(self, e):
         if self.isActive:
@@ -571,7 +573,7 @@ class CanvasPage(Frame):
 
     def drawWidgets(self):
         """ Setting up the canvas and color pallete widgets. """
-        c_width = int(self.controller.winfo_screenwidth()*.7)
+        c_width = int(self.controller.winfo_screenwidth()*.75)
         c_height = int(self.controller.winfo_screenheight()*.75)
         self.c = Canvas(self, width=c_width, height=c_height, bg=self.color_bg, cursor="circle")
         self.create_cursor()
@@ -620,37 +622,34 @@ def label_image(model, img):
     # return emotions[modified.index(max(modified))]
     max_i = custom[0].tolist().index(max(custom[0]))
     if max_i in {0, 1}:
-        # print(emotions[max_i] +" -> angry")
         return "angry"
     elif max_i in {3}:
-        # print(emotions[max_i] +" -> happy")
         return "happy"
     else:
-        # print(emotions[max_i] +" -> neutral")
         return "neutral"
 
 def mm_to_px(screenWidth, screenHeight, position):
     x, y, z = position
-    x = screenWidth/250*(x+80)
-    y = screenHeight - screenHeight/140*(y-50)
+    x = screenWidth/224*(x+112)
+    y = screenHeight - screenHeight/150*(y-60)
     return x, y, z
 
 def is_in_bounds(position):
-    return position[0] >= -100 and position[0] <= 150 and position[1] >= 60 and position[1] <= 200
+    return position[0] >= -112 and position[0] <= 112 and position[1] >= 60 and position[1] <= 210
 
 def run():
     app = ArtStudioApp()
     canvasPage = app.frames[CanvasPage]
-    screen_width = app.winfo_screenwidth()
-    screen_height = app.winfo_screenheight()
+    screen_width = int(app.winfo_screenwidth()*.75)
+    screen_height = int(app.winfo_screenheight()*.75)
+
     #Setup Speech Multithreading
     speech_callback_queue = queue.Queue()
 
     def speech_callback(recognizer, audio):
         '''
         Callback function for when audio is heard on separate thread.
-        Uses Google Speech recognition to translate audio to text and the text is then
-        parsed for keywords.
+        Uses Google Speech recognition to translate audio to text and the text is then parsed for keywords.
         '''
         print("Audio received")
         try:
@@ -701,7 +700,7 @@ def run():
             elif "custom" in words:
                 func = lambda: canvasPage.change_fg(canvasPage.color_custom)
                 speech_callback_queue.put(func)
-            elif "clear" in words and "canvas" in words:
+            elif "clear" in words:
                 func = lambda: canvasPage.clear()
                 speech_callback_queue.put(func)
             elif "undo" in words:
@@ -712,7 +711,7 @@ def run():
                 speech_callback_queue.put(canvasPage.master.destroy)
             elif "home" in words:
                 speech_callback_queue.put(lambda: app.show_frame(MainPage))
-            elif "home" in words:
+            elif "help" in words:
                 speech_callback_queue.put(lambda: app.show_frame(HelpPage, state="HELP"))
         except sr.UnknownValueError:
             speech_callback_queue.put(lambda: canvasPage.speech.set("You said: ... "))
@@ -722,7 +721,7 @@ def run():
 
     #Setup Speech Recognition
     r = sr.Recognizer()
-    r.energy_threshold = 8000
+    r.energy_threshold = 12000
     m = sr.Microphone()
     with m as source:
         r.adjust_for_ambient_noise(source)
@@ -765,11 +764,11 @@ def run():
                 emotionStore[label] = emotionStore.get(label, 0) + 1
                 emotionCount += 1
 
-                if emotionCount >= 500:
+                if emotionCount >= 100:
                     print(emotionStore)
-                    if emotionStore.get("angry", 0) >= 100 and emotionStore.get("angry", 0) > emotionStore.get("happy", 0):
+                    if emotionStore.get("angry", 0) >= 40 and emotionStore.get("angry", 0) > emotionStore.get("happy", 0):
                         prevalent = "angry"
-                    elif emotionStore.get("happy", 0) >= 100 and emotionStore.get("happy", 0) > emotionStore.get("angry", 0):
+                    elif emotionStore.get("happy", 0) >= 40 and emotionStore.get("happy", 0) > emotionStore.get("angry", 0):
                         prevalent = "happy"
                     else:
                         prevalent = "neutral"
@@ -795,7 +794,7 @@ def run():
 
                     canvasPage.move_cursor_to(avg_x, avg_y)
 
-                    if avg_z <= 0:
+                    if avg_z <= -20:
                         canvasPage.gesture_paint(avg_x, avg_y)
                         canvasPage.fill_cursor()
                     else:
@@ -817,12 +816,11 @@ def run():
 
             sleep(0.01)
 
-        except TclError: #Error raised when attempting to quit
+        except TclError: #catch rror raised when attempting to quit
             break
 
     # When everything is done, release the capture
     video_capture.release()
-    # cv2.destroyAllWindows()
 
     #Stop background threads
     stop_listening(wait_for_stop=False)
