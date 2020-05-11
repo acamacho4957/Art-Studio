@@ -115,7 +115,7 @@ class ArtStudioApp(Tk):
         self.menu.add_command(label="Clear Canvas", command=self.frames[CanvasPage].clear)
         self.menu.add_command(label="Save", command=self.frames[CanvasPage].save)
         self.menu.add_command(label="Help", command=lambda: self.show_frame(HelpPage, state="HELP"))
-        self.menu.add_command(label="Exit", command=self.destroy)
+        self.menu.add_command(label="Quit", command=self.destroy)
 
     def update_model(self):
         """ Load callibrated custom_model if it exists, otherwise load standard emotion_model. """
@@ -483,7 +483,7 @@ class CanvasPage(Frame):
         if self.isActive:
             self.isErasing = False
             if color is None and not eraser:
-                result, selected = colorchooser.askcolor(color=self.color_fg)[1]
+                result, selected = colorchooser.askcolor(color=self.color_fg)
                 if result is not None:
                     self.color_fg = selected
                     self.color_custom = self.color_fg
