@@ -2,6 +2,7 @@
 * [Python 3.6.0 or greater](https://www.python.org/downloads/release/python-3610/)
 * [Microsoft C++ Build Tools 14.0 or greater](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 * [Leap Motion Controller SDK V2](https://developer.leapmotion.com/setup/desktop)
+  * For Windows 10 users, be sure to apply the neccessary fix from the [Leap forums](https://forums.leapmotion.com/t/resolved-windows-10-fall-creators-update-bugfix/6585).
 * [Ghostscript](https://www.ghostscript.com/download/gsdnld.html)
   * Once installed, make sure that `C:\Program Files\gs\gs9.52\bin\` is added to the PATH environment variable. Then, a restart is necessary.
 
