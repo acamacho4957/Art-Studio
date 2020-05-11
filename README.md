@@ -9,7 +9,7 @@
 1. Clone repo and cd into the "Art-Studio" directory.
 
 ```
-git clone
+git clone https://github.com/acamacho4957/Art-Studio.git
 cd Art-Studio
 ```
 
