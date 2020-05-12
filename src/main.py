@@ -203,7 +203,7 @@ class HelpPage(Frame):
                             height=22, relief=FLAT, padx=5,bg="white")
         self.instructions.pack(pady=10)
         self.instructions.insert(END, "GETTING STARTED\n")
-        self.instructions.insert(END, "If you are a new user, be sure to go through the callibration steps from the Home page (accessible from the top left corner).\n\n")
+        self.instructions.insert(END, "If you are a new user, be sure to go through the callibration steps from the Home page.\n\n")
         self.instructions.insert(END, "THE BASICS\n")
         self.instructions.insert(END, "Art Studio is a gesture and speech based drawing program. From the Home screen, you can navigate to the ")
         self.instructions.insert(END, "painting canvas by pressing the New Drawing button. There are are 3 main parts to the screen. \n")
@@ -215,7 +215,7 @@ class HelpPage(Frame):
         self.instructions.config(state=DISABLED)
         
         self.btn = Button(self, 
-                            text="Get Drawing!", 
+                            text="Next", 
                             command=lambda:self.controller.show_frame(CanvasPage, state="CONTINUE"),
                             width=20, 
                             font=("arial", 20),
