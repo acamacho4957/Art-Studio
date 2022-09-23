@@ -24,7 +24,7 @@ opencv-python==4.2.0.34
 pandas==0.25.2
 Pillow==7.1.1
 pocketsphinx==0.1.15
-protobuf==3.6.0
+protobuf==3.18.3
 PyAudio==0.2.11
 PyAutoGUI==0.9.50
 pydot==1.2.4
